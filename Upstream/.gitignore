@@ -1,0 +1,41 @@
+data/Images
+data/Product
+data/Sessions
+**/venv
+**/__pycache__
+CLAUDE.md
+.DS_Store
+PseudoUser/BETag-master
+PseudoUser/UniSRec
+
+# Generated files from gen_getag.py
+PseudoUser/json/item_group_mapping.json
+PseudoUser/json/group_tag_frequency.json
+PseudoUser/json/tags/getags_zscore_iter*.json
+
+# Generated results from retrieval_v2.py
+PseudoUser/results/
+
+# Cache and temporary files
+PseudoUser/src/dataset/
+PseudoUser/src/exps_v2/
+PseudoUser/src/checkpoints/
+
+# Generated data files
+PseudoUser/cllm_data/
+PseudoUser/label_data/
+PseudoUser/statistics/
+
+# Testing files
+PseudoUser/src/test_imports.py
+PseudoUser/src/test_requirements.sh
+PseudoUser/src/test_env/
+
+PseudoUser/src/json/
+PseudoUser/json/tags/old_full_keyword.json
+
+PseudoUser/label_data_mb_ama
+PseudoUser/label_data_mb_food
+PseudoUser/label_data_mb_yelp
+PseudoUser/label_data_tmp
+

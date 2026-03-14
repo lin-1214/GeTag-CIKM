@@ -1,0 +1,3 @@
+"""
+Core GeTag construction logic.
+"""

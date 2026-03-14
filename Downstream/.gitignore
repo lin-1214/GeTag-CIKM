@@ -1,0 +1,118 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# PULLRS - old code directory (not for publication)
+PULLRS/
+
+# Cache directories (auto-generated during experiments)
+downstream/bm25/cache/*
+!downstream/bm25/cache/.gitignore
+downstream/birank/cache/*
+!downstream/birank/cache/.gitignore
+downstream/UniSRec/cache/*
+
+# LLMRank generated data and logs
+downstream/LLMRank/llmrank/dataset/*
+!downstream/LLMRank/llmrank/dataset/.gitkeep
+downstream/LLMRank/llmrank/log/*
+downstream/LLMRank/llmrank/log_tensorboard/*
+downstream/LLMRank/llmrank/saved/*
+
+# LLMRank API keys (keep your key private!)
+downstream/LLMRank/llmrank/openai_api.yaml
+
+# Experiment results (auto-generated, can be reproduced)
+results/
+
+# Training outputs (fine-tuned checkpoints, logs)
+output/
+!checkpoints/
+checkpoints/*
+!checkpoints/.gitkeep
+!checkpoints/README.md
+!checkpoints/UniSRec-FHCKM-300.pth
+
+# Large preprocessed datasets (UniSRec datasets with BERT embeddings are very large)
+data/preprocessed/UniSRec/
+
+# Large data files (uncomment if you want to exclude more)
+# Note: Current data/ is ~8MB which is acceptable for GitHub
+# data/raw/**/*.csv
+# data/preprocessed/**/*.json
+# data/preprocessed/**/*.pkl
+# !data/**/.gitkeep
+
+# Generated tag files (uncomment if you want to exclude)
+# Note: Current tags/ is ~34MB which is acceptable for GitHub
+# tags/**/*.json
+# !tags/**/.gitkeep
+
+# Large tag files (betags are >100MB, too large for GitHub)
+tags/**/betags.json
+tags/**/getag_betags*.json
+
+# GeTag intermediate files (generated during tag generation)
+tags/**/item_group_mapping_*.json
+tags/**/group_tag_frequency_*.json
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+log/
+log_tensorboard/

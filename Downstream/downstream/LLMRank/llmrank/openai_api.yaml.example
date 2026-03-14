@@ -1,0 +1,5 @@
+# OpenRouter API Configuration
+# Get your API key from: https://openrouter.ai/keys
+
+api_base: "https://openrouter.ai/api/v1"
+api_key: "YOUR_OPENROUTER_API_KEY_HERE"
