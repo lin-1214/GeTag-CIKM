@@ -1,105 +1,168 @@
-# PseudoUser
+# PseudoUser: Label Phase for GeTag
 
-A project for simulating and analyzing user behavior using machine learning models.
+This directory contains the session labeling system used to generate classified user session data for the GeTag downstream pipeline.
 
-## Project Structure
+## Quick Start
 
+```bash
+cd src
+bash run_all_label_phase.sh
 ```
-PseudoUser/
-├── src/               # Source code directory
-│   ├── label_phase.py    # Implementation of the labeling phase
-│   ├── predict_phase.py  # Implementation of the prediction phase
-│   ├── train.py         # Training implementation
-│   ├── predict.py       # Prediction module
-│   ├── config.py        # Configuration settings
-│   ├── utils.py         # Utility functions
-│   ├── finetune.py      # Model fine-tuning functionality
-│   ├── gen_cllm_prompt.py # Prompt generation for CLLM
-│   ├── prompt.py        # Prompt handling utilities
-│   ├── requirements.txt # Python dependencies
-│   └── run.sh          # Main execution script
-├── data/              # Stores preprocessed session data
-└── init_conda.sh      # Conda environment setup script
-```
+
+That's it. The script runs `label_phase.py` for all required dataset × tag combinations and copies the outputs to the GeTag classified data directory.
+
+---
+
+## What It Does
+
+`run_all_label_phase.sh` iterates over 5 combinations:
+
+| Domain  | Tag    | GeTag Output File          |
+|---------|--------|----------------------------|
+| food    | base   | `food_basetag.csv`         |
+| amazon  | native | `games_native.csv`         |
+| amazon  | base   | `games_basetag.csv`        |
+| yelp    | native | `yelp_native.csv`          |
+| yelp    | base   | `yelp_basetag.csv`         |
+
+For each combination it:
+1. Sets `DATA_DOMAIN` and `INCLUDE_TAG` environment variables
+2. Runs `label_phase.py`, which uses an LLM (Qwen3-4B via vLLM) to:
+   - **Stage 1**: Sample sessions and ask the LLM to generate ~20 persona cluster labels
+   - **Stage 2**: Classify all sessions into those clusters (multi-label, batch of 4)
+3. Outputs `../label_data/classified_data_{domain}_{tag}_0.csv`
+4. Copies to GeTag as `{dataset}_{tag}.csv`
+
+---
 
 ## Prerequisites
 
-- Python 3.x
-- CUDA-compatible GPU (recommended)
-- conda (recommended for environment management)
-
-## Dependencies
-
-The project requires the following Python packages:
-- transformers (4.51.0)
-- hf_xet
-- pandas
-- numpy
-- torch
-- accelerate
-- tqdm
-- scipy
-- torchvision
-- torchaudio
-
-## Setup
-
-
-1. Install the required packages:
-```bash
-cd src
-pip install -r requirements.txt
-```
-
-## Usage
-
-The main execution script `run.sh` orchestrates the entire workflow. It performs multiple iterations of label and predict phases.
-
-To run the project:
+### Environment
 
 ```bash
-cd src
-bash run.sh
+pip install -r src/requirements.txt
 ```
 
-The script will:
-1. Clean up existing checkpoints and JSON files
-2. Create necessary directories
-3. Run multiple iterations of:
-   - Label phase
-   - Predict phase
+Key dependencies: `vllm`, `transformers`, `openai`, `pandas`, `numpy`, `tqdm`
 
-### Configuration
+The LLM (Qwen3-4B) is loaded **locally** — no API key needed. Requires a GPU with ~8GB+ VRAM.
 
-You can modify the following parameters in `run.sh`:
-- `NUM_ITERATIONS`: Number of times to run the full cycle (default: 8)
-- `LABEL_GPU`: GPU device for label phase (default: 0)
-- `PREDICT_GPU`: GPU device for predict phase (default: 1)
+### Required Data Files
 
-## Project Components
+All paths are relative to the `PseudoUser/` directory:
 
-- `label_phase.py`: Implementation of the labeling phase
-- `predict_phase.py`: Implementation of the prediction phase
-- `train.py`: Training implementation
-- `predict.py`: Prediction module
-- `config.py`: Configuration parameters
-- `utils.py`: Utility functions
-- `finetune.py`: Model fine-tuning functionality
-- `gen_cllm_prompt.py`: Prompt generation for CLLM
-- `prompt.py`: Prompt handling utilities
+**Session data** (input):
+```
+data/food/food_commerce_data_labeling.csv
+data/amazon/amazon_sessions_labeling.csv
+data/yelp/yelp_sessions_labeling.csv
+```
 
-## Output
+**Item tag mappings** (used to enrich prompts with semantic context):
+```
+json/tags/food_basetag.json
+json/tags/food_native.json
+json/tags/food_betags.json
+json/tags/amazon_basetag.json
+json/tags/amazon_native.json
+json/tags/amazon_betags.json
+json/tags/amazon_mapping.json
+json/tags/yelp_basetag.json
+json/tags/yelp_native.json
+json/tags/yelp_betags.json
+```
 
-The program generates several JSON files in the `json` directory:
-- `ucb_tracking.json`: Tracks UCB (Upper Confidence Bound) scores
-- `iteration_meta.json`: Metadata for each iteration
-- `best_prompt.json`: Stores information of the best performing prompts in the previous iteration
-- `max_ndcg_history.json`: NDCG (Normalized Discounted Cumulative Gain) history
-- `all_time_best_prompt.json`: Stores information of the best performing prompts through the whole process
+**ID/name mappings**:
+```
+json/product_name_to_id.json   (food)
+json/product_id_to_name.json   (food)
+json/amazon_title_to_asin.json (amazon/games)
+json/amazon_asin_to_title.json (amazon/games)
+json/yelp_name_to_id.json      (yelp)
+json/yelp_id_to_name.json      (yelp)
+```
+
+### Output
+
+Classified CSV files are written to `label_data/` and then copied to GeTag:
+```
+label_data/classified_data_food_base_0.csv
+label_data/classified_data_amazon_native_0.csv
+label_data/classified_data_amazon_base_0.csv
+label_data/classified_data_yelp_native_0.csv
+label_data/classified_data_yelp_base_0.csv
+```
+
+---
+
+## Configuration
+
+Edit `src/config.py` to change:
+- `MODEL_NAME` — default: `Qwen/Qwen3-4B`
+- `T_CLUSTERS` — number of persona clusters to generate (default: 20)
+- `BATCH_SIZE` — sessions per classification batch (default: 4)
+- `SAMPLE_STEP` — sampling interval for Stage 1 (default: every 25 sessions)
+- `MULTI_LABEL` / `MAX_LABELS_PER_SESSION` — multi-label settings
+
+---
 
 ## Directory Structure
 
-- `src/`: Contains all source code
-- `data/`: Stores preprocessed session data
-- `checkpoints/`: (Created during execution) Stores model checkpoints
-- `json/`: (Created during execution) Stores output JSON files
+```
+PseudoUser/
+├── src/                          # Active scripts
+│   ├── run_all_label_phase.sh    # Entry point
+│   ├── label_phase.py            # Main labeling logic
+│   ├── config.py                 # Configuration
+│   ├── utils.py                  # LLM client + data loading
+│   ├── prompt.py                 # Prompt templates
+│   ├── gen_cllm_prompt.py        # Prompt file generation
+│   ├── requirements.txt          # Python dependencies
+│   └── json/                     # Runtime state (iteration metadata)
+│
+├── data/                         # Input session data
+│   ├── food/
+│   ├── amazon/
+│   └── yelp/
+│
+├── json/                         # ID mappings and tag files
+│   ├── tags/
+│   └── *.json
+│
+└── label_data/                   # Output classified CSVs
+```
+
+### Files NOT Used in Current Workflow
+
+The following are leftovers from earlier research iterations and are **safe to delete** if you want to clean up:
+
+**In `src/`: (Some of them are already deleted)**
+- `finetune.py`, `finetune_i3fresh.py` — UniSRec fine-tuning (not used)
+- `model.py`, `models/` — model definitions (not used)
+- `train.py` — training script (not used)
+- `predict.py`, `predict_phase.py` — prediction phase (not used)
+- `evaluation_phase.py` — evaluation (not used)
+- `retrieval_v2.py` — retrieval experiment (not used)
+- `multibeam.py`, `resample_beams.py` — multi-beam ensemble (not used)
+- `gen_getag.py` — GeTag tag generation (belongs in downstream)
+- `run_sasrec_baseline.py`, `run.sh`, `test_phase1.sh` — old run scripts
+- `plot_metrics.py`, `convert_to_item_based.py` — utility scripts (not used)
+- `libs/` — library code for old models
+- `dataset/` — preprocessed datasets for old experiments
+- `exps_v2/` — experiment logs and caches
+- `tmp/` — temporary files
+- `PHASE1_IMPLEMENTATION.md`, `PHASE1_SUMMARY.md` — old design docs
+
+**In `PseudoUser/`:**
+- `downsample_dataset.py`, `preprocess_i3fresh_for_unisrec.py` — one-time preprocessing
+- `label_data_mb_ama/`, `label_data_mb_food/`, `label_data_mb_yelp/` — multi-beam experiment outputs
+- `label_data_tmp/` — temporary outputs
+- `results/` — old retrieval experiment results
+- `data/checkpoints/` — old UniSRec model checkpoint
+- `data/food/pkl/`, `data/food/*_filtered.csv`, `data/food/*_evaluation.csv` — intermediate files
+- `data/amazon/amazon_sessions_filtered.csv`, `data/amazon/amazon_sessions_evaluation.csv`
+- `data/yelp/session_yelp.csv`, `data/yelp/yelp_sessions_evaluation.csv`
+- `data/movie/`, `data/unisrec/` — unused datasets
+- `json/tags/*.backup*` — backup files
+- `json/tags/movie_*.json`, `json/tags/base_tags_v2.json`, `json/tags/keywords_v2.json`, `json/tags/old_full_keyword.json` — unused tag files
+- `json/movie_*.json`, `json/filtered_product_list.json` — unused mappings
