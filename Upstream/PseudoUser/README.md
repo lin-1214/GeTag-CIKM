@@ -6,7 +6,7 @@ This directory contains the session labeling system used to generate classified 
 
 ```bash
 cd src
-bash run_all_label_phase.sh
+bash ./src/run_all_label_phase.sh
 ```
 
 That's it. The script runs `label_phase.py` for all required dataset × tag combinations and copies the outputs to the GeTag classified data directory.
