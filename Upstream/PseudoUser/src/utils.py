@@ -405,6 +405,10 @@ class Utils:
         else:
             actual_seed = seed
             
+        extra = {}
+        if "qwen" in self.model.lower():
+            extra["chat_template_kwargs"] = {"enable_thinking": False}
+
         resp = self.client.chat.completions.create(
             model=self.model,
             messages=[
@@ -414,7 +418,7 @@ class Utils:
             temperature=temperature,
             max_tokens=self.max_new_tokens,
             seed=actual_seed,              # vLLM 支援
-            extra_body={"chat_template_kwargs": {"enable_thinking": False}},
+            extra_body=extra if extra else None,
             # 需要可以加入 stop=[] 做結尾約束
         )
         return resp.choices[0].message.content.strip()

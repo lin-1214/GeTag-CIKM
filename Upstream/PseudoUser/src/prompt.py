@@ -276,6 +276,8 @@ class Prompt:
     
     def generate_classification_prompt(self, k_aug = Config.K_AUG, batch_size = Config.BATCH_SIZE, categories = None, body = None):
 
+        import os as _os
+        tag_prompt_variant = _os.getenv("TAG_PROMPT_VARIANT", "default").lower()
         domain = getattr(config, "DOMAIN", "food").lower()
 
         if config.MULTI_LABEL:
@@ -451,8 +453,7 @@ class Prompt:
                 - Do not use specific movie titles, actors, directors, or franchise names in the labels.
 
                 {output_format}
-                - Example output:
-                {output_example}
+                {"" if tag_prompt_variant == "no_example" else "- Example output:" + chr(10) + "                " + str(output_example)}
 
                 4. Sessions
                 - Here are the sessions to classify:
@@ -490,8 +491,7 @@ class Prompt:
                 - Do not use specific product names or brands in the labels.
 
                 {output_format}
-                - Example output:
-                {output_example}
+                {"" if tag_prompt_variant == "no_example" else "- Example output:" + chr(10) + "                " + str(output_example)}
 
                 4. Sessions
                 - Here are the sessions to classify:
@@ -529,8 +529,7 @@ class Prompt:
                 - Do not use specific restaurant names or chains in the labels.
 
                 {output_format}
-                - Example output:
-                {output_example}
+                {"" if tag_prompt_variant == "no_example" else "- Example output:" + chr(10) + "                " + str(output_example)}
 
                 4. Sessions
                 - Here are the sessions to classify:
@@ -566,8 +565,7 @@ class Prompt:
                 - Choose labels that best describe the user's shopping behavior or intent.
 
                 {output_format}
-                - Example output:
-                {output_example}
+                {"" if tag_prompt_variant == "no_example" else "- Example output:" + chr(10) + "                " + str(output_example)}
 
                 4. Sessions
                 - Here are the sessions to classify:

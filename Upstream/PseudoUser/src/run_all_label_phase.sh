@@ -2,35 +2,50 @@
 # Run label_phase.py for all dataset + tag combinations
 # Generates classified CSV files for GeTag
 #
-# Required combinations (5 total):
-#   - food + base (food_native already exists)
-#   - amazon + native  (amazon = games in GeTag)
-#   - amazon + base  
-#   - yelp + native
-#   - yelp + base
+# Usage:
+#   ./run_all_label_phase.sh [--model-id <id>]
+#
+# All 6 combinations:
+#   - food + native, food + base
+#   - amazon + native, amazon + base  (amazon = games in GeTag)
+#   - yelp + native, yelp + base
 
 set -e  # Exit on error
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# GeTag classified data directory
-GETAG_CLASSIFIED_DIR="/data2/b11902154/GeTag/data/classified"
+# Parse arguments
+MODEL_ID=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --model-id) MODEL_ID="$2"; shift 2 ;;
+        *) echo "Unknown argument: $1"; exit 1 ;;
+    esac
+done
+
+# GeTag classified data directory (Downstream stage, relative to this script).
+# Override with the GETAG_CLASSIFIED_DIR env var if your layout differs.
+GETAG_CLASSIFIED_DIR="${GETAG_CLASSIFIED_DIR:-$SCRIPT_DIR/../../../Downstream/data/classified}"
 
 echo "========================================"
 echo "Running Label Phase for All Combinations"
 echo "========================================"
 echo "Working directory: $(pwd)"
 echo "GeTag output directory: $GETAG_CLASSIFIED_DIR"
+if [ -n "$MODEL_ID" ]; then
+    echo "Model ID: $MODEL_ID"
+fi
 echo ""
 
 # Create GeTag classified directory if not exists
 mkdir -p "$GETAG_CLASSIFIED_DIR"
 
-# Define combinations to run
+# Define combinations to run (all 6)
 # Format: "domain:tag:getag_dataset:getag_tag"
 # Mapping: amazon -> games, base -> basetag
 COMBINATIONS=(
+    "food:native:food:native"
     "food:base:food:basetag"
     "amazon:native:games:native"
     "amazon:base:games:basetag"
@@ -38,33 +53,36 @@ COMBINATIONS=(
     "yelp:base:yelp:basetag"
 )
 
-# Optional: Add food:native if you want to regenerate
-# COMBINATIONS+=("food:native:food:native")
-
 for combo in "${COMBINATIONS[@]}"; do
     IFS=':' read -r domain tag getag_dataset getag_tag <<< "$combo"
-    
+
     echo ""
     echo "========================================"
     echo "Processing: ${domain} + ${tag}"
     echo "  -> GeTag: ${getag_dataset}_${getag_tag}"
     echo "========================================"
-    
+
     # Set environment variables
     export DATA_DOMAIN="$domain"
     export INCLUDE_TAG="$tag"
-    
+
     echo "DATA_DOMAIN=$DATA_DOMAIN"
     echo "INCLUDE_TAG=$INCLUDE_TAG"
     echo ""
-    
+
     # Run label_phase.py
     python label_phase.py
-    
+
     # The output file will be: ../label_data/classified_data_{domain}_{tag}_0.csv
     OUTPUT_FILE="../label_data/classified_data_${domain}_${tag}_0.csv"
-    GETAG_FILE="${GETAG_CLASSIFIED_DIR}/${getag_dataset}_${getag_tag}.csv"
-    
+
+    # Build target filename with optional model_id suffix
+    if [ -n "$MODEL_ID" ]; then
+        GETAG_FILE="${GETAG_CLASSIFIED_DIR}/${getag_dataset}_${getag_tag}_${MODEL_ID}.csv"
+    else
+        GETAG_FILE="${GETAG_CLASSIFIED_DIR}/${getag_dataset}_${getag_tag}.csv"
+    fi
+
     if [ -f "$OUTPUT_FILE" ]; then
         echo "✓ Generated: $OUTPUT_FILE"
         # Copy to GeTag with correct naming
@@ -73,7 +91,7 @@ for combo in "${COMBINATIONS[@]}"; do
     else
         echo "WARNING: Expected output not found: $OUTPUT_FILE"
     fi
-    
+
     echo ""
 done
 

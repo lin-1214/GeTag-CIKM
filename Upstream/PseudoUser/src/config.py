@@ -23,7 +23,7 @@ class Config:
     CLLM_DATA_PATH = '../cllm_data'
     CLLM_PROCESSED_DATA_PATH = 'user_session_data'
 
-    T_CLUSTERS   = 20
+    T_CLUSTERS   = int(os.getenv("T_CLUSTERS", 20))
     T_VARIANCE   = 0
     GPU_INDEX    = 0
     MAX_NEW_TOK  = 1024
@@ -33,11 +33,11 @@ class Config:
     TOP_K_PROMPTS = 1  # Number of top prompts to keep
     K_AUG = 1  # Will be dynamically adjusted
     
-    SAMPLE_STEP  = 25 # 4900/25=196 
+    SAMPLE_STEP  = int(os.getenv("SAMPLE_STEP", 25))  # 4900/25=196 effective sessions
     SEED         = 42
 
     SAMPLE_START_INDEX = 0  # The starting row index for sampling
-    SAMPLE_SIZE = 4900
+    SAMPLE_SIZE = int(os.getenv("SAMPLE_SIZE", 4900))  # raw row window (not the ablation knob)
     BATCH_SIZE = 4
 
     # Multi-beam classification parameters

@@ -1,8 +1,6 @@
 from utils import Utils
 from prompt import Prompt
 from config import Config
-from gen_cllm_prompt import generate_prompt_files
-
 import random
 import numpy as np
 import pandas as pd
@@ -540,9 +538,6 @@ def main():
 
         labeled_df.to_csv(f"{config.CLASSIFIED_DATA_PATH}_{step}.csv", index=False)
         print(f"Predictions saved to {config.CLASSIFIED_DATA_PATH}_{step}.csv")
-
-    # # 3. Generate prompt files for CLLM4Rec & CLLM4Rec-prompt
-    # generate_prompt_files(config.CLASSIFIED_DATA_PATH, config.CLLM_DATA_PATH, config.CLLM_PROCESSED_DATA_PATH)
 
     try:
         with open('json/iteration_prompts.json', 'w', encoding='utf-8') as f:
