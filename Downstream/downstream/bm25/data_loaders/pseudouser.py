@@ -18,7 +18,14 @@ __all__ = [
 ]
 
 _CACHE_DIR = 'dataset/pseudouser'
-_DATA_PATH = '/Users/lin1214/Desktop/lin1214/github/PULLRS/PseudoUser/data/food_commerce_data_cleaned_v2.csv'
+# Food raw session CSV (lives in the Upstream stage). Override with the FOOD_RAW_CSV env var.
+_DATA_PATH = os.getenv(
+    'FOOD_RAW_CSV',
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        '../../../../Upstream/PseudoUser/data/food/food_commerce_data_cleaned_v3.csv',
+    ),
+)
 
 
 @lru_cache(maxsize=1)
