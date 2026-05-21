@@ -8,7 +8,7 @@ GeTag is a two-stage pipeline:
 
 | Stage | Directory | Role |
 |---|---|---|
-| **Upstream** | `Upstream/` | LLM-based session labeling (PseudoUser). Classifies user sessions into pseudo-user persona labels and emits classified-session CSVs. |
+| **Upstream** | `Upstream/` | LLM-based session labeling. Classifies user sessions into persona labels and emits classified-session CSVs. |
 | **Downstream** | `Downstream/` | GeTag tag generation (z-score filtering) + evaluation (BM25 / BiRank / UniSRec / LLMRank). |
 
 ```
@@ -21,6 +21,30 @@ Upstream/PseudoUser  ──(run_all_label_phase.sh, LLM via vLLM)──►  clas
 
 The upstream's classified CSVs are the input to the Downstream tag-generation step.
 
+## Project Structure
+
+```
+GeTag-pipeline/
+├── Upstream/                      # Stage 1: session labeling
+│   └── PseudoUser/
+│       ├── src/                   # label_phase.py, config.py, prompt.py, utils.py, run_all_label_phase.sh
+│       ├── data/                  # raw session data + item tags per dataset
+│       └── json/                  # id↔name mappings, tag dictionaries
+└── Downstream/                    # Stage 2: GeTag generation + evaluation
+    ├── getag/                     # Core GeTag implementation
+    │   ├── gen_getag.py           # Tag generation
+    │   ├── search_zscore_threshold.py        # BM25 threshold search
+    │   ├── search_zscore_threshold_birank.py # BiRank threshold search
+    │   └── search_zscore_threshold_unisrec.py# UniSRec threshold search
+    ├── downstream/
+    │   ├── bm25/                  # BM25 retrieval
+    │   ├── birank/                # BiRank retrieval
+    │   ├── UniSRec/               # Sequential recommendation
+    │   └── LLMRank/               # LLM-based ranking
+    ├── scripts/                   # Preprocessing and visualization scripts
+    └── checkpoints/               # Pre-trained model checkpoints
+```
+
 ## Installation
 
 A single dependency set covers both stages:
@@ -31,28 +55,23 @@ pip install -r requirements.txt
 
 ## Stage 1 — Upstream: Session Labeling
 
-The upstream classifies user sessions into pseudo-user persona labels via an LLM served through a vLLM OpenAI-compatible endpoint. Its output — classified-session CSVs — is the input to GeTag generation in Stage 2.
+The upstream classifies user sessions into persona labels via an LLM served through a vLLM OpenAI-compatible endpoint. Its output — classified-session CSVs — is the input to GeTag generation in Stage 2.
 
 **Required inputs** (shipped under `Upstream/PseudoUser/`):
 - `data/{food,amazon,yelp}/*_labeling.csv` — raw user sessions per domain
 - `json/tags/{domain}_{native,basetag,betags}.json` — item-tag dictionaries used to build tag-aware context
 - `json/*_id_to_name.json` / `json/*_name_to_id.json` — item ID ↔ name mappings
 
-### 1. Start a vLLM server (user-managed)
+### Run labeling for all dataset × tag combinations
 
-```bash
-CUDA_VISIBLE_DEVICES=0,1 vllm serve Qwen/Qwen3-4B \
-    --port 1357 --served-model-name Qwen/Qwen3-4B --tensor-parallel-size 2
-```
-
-### 2. Run labeling for all dataset × tag combinations
+Labeling requires a vLLM (or any OpenAI-compatible) endpoint. Point the env vars at your endpoint and run:
 
 ```bash
 cd Upstream/PseudoUser/src
 
-# Point at your vLLM endpoint (defaults: http://localhost:1357/v1, Qwen/Qwen3-4B, key=DUMMY)
+# Defaults: http://localhost:1357/v1, Qwen/Qwen3-4B, key=DUMMY
 export VLLM_BASE_URL=http://localhost:1357/v1
-export VLLM_MODEL=Qwen/Qwen3-4B
+export VLLM_MODEL=Qwen/Qwen3-8B
 export VLLM_API_KEY=your-key        # optional
 
 bash run_all_label_phase.sh
@@ -111,30 +130,6 @@ Downstream/
 │   └── preprocessed/  # Preprocessed data for downstream tasks
 └── checkpoints/
     └── UniSRec-FHCKM-300.pth
-```
-
-## Project Structure
-
-```
-GeTag-pipeline/
-├── Upstream/                      # Stage 1: session labeling (PseudoUser)
-│   └── PseudoUser/
-│       ├── src/                   # label_phase.py, config.py, prompt.py, utils.py, run_all_label_phase.sh
-│       ├── data/                  # raw session data + item tags per dataset
-│       └── json/                  # id↔name mappings, tag dictionaries
-└── Downstream/                    # Stage 2: GeTag generation + evaluation
-    ├── getag/                     # Core GeTag implementation
-    │   ├── gen_getag.py           # Tag generation
-    │   ├── search_zscore_threshold.py        # BM25 threshold search
-    │   ├── search_zscore_threshold_birank.py # BiRank threshold search
-    │   └── search_zscore_threshold_unisrec.py# UniSRec threshold search
-    ├── downstream/
-    │   ├── bm25/                  # BM25 retrieval
-    │   ├── birank/                # BiRank retrieval
-    │   ├── UniSRec/               # Sequential recommendation
-    │   └── LLMRank/               # LLM-based ranking
-    ├── scripts/                   # Preprocessing and visualization scripts
-    └── checkpoints/               # Pre-trained model checkpoints
 ```
 
 ## Stage 2 — Downstream: Tag Generation & Evaluation
