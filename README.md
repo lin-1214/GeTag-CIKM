@@ -2,16 +2,85 @@
 
 GeTag generates semantically enriched item tags by mining collective user intent from session-group patterns, using LLM-derived group semantics and z-score filtering to identify statistically significant item-tag associations.
 
+## Pipeline Overview
+
+GeTag is a two-stage pipeline:
+
+| Stage | Directory | Role |
+|---|---|---|
+| **Upstream** | `Upstream/` | LLM-based session labeling (PseudoUser). Classifies user sessions into pseudo-user persona labels and emits classified-session CSVs. |
+| **Downstream** | `Downstream/` | GeTag tag generation (z-score filtering) + evaluation (BM25 / BiRank / UniSRec / LLMRank). |
+
+```
+Upstream/PseudoUser  ──(run_all_label_phase.sh, LLM via vLLM)──►  classified CSVs
+        │
+        └──► Downstream/data/classified/{dataset}_{tag}.csv
+                  │
+                  └──► getag/gen_getag.py ──► enhanced tags ──► downstream/ evaluation
+```
+
+The upstream's classified CSVs are the input to the Downstream tag-generation step.
+
 ## Installation
 
+A single dependency set covers both stages:
+
 ```bash
-cd GeTag
 pip install -r requirements.txt
 ```
 
+## Stage 1 — Upstream: Session Labeling
+
+The upstream classifies user sessions into pseudo-user persona labels via an LLM served through a vLLM OpenAI-compatible endpoint. Its output — classified-session CSVs — is the input to GeTag generation in Stage 2.
+
+**Required inputs** (shipped under `Upstream/PseudoUser/`):
+- `data/{food,amazon,yelp}/*_labeling.csv` — raw user sessions per domain
+- `json/tags/{domain}_{native,basetag,betags}.json` — item-tag dictionaries used to build tag-aware context
+- `json/*_id_to_name.json` / `json/*_name_to_id.json` — item ID ↔ name mappings
+
+### 1. Start a vLLM server (user-managed)
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1 vllm serve Qwen/Qwen3-4B \
+    --port 1357 --served-model-name Qwen/Qwen3-4B --tensor-parallel-size 2
+```
+
+### 2. Run labeling for all dataset × tag combinations
+
+```bash
+cd Upstream/PseudoUser/src
+
+# Point at your vLLM endpoint (defaults: http://localhost:1357/v1, Qwen/Qwen3-4B, key=DUMMY)
+export VLLM_BASE_URL=http://localhost:1357/v1
+export VLLM_MODEL=Qwen/Qwen3-4B
+export VLLM_API_KEY=your-key        # optional
+
+bash run_all_label_phase.sh
+```
+
+This runs all six combinations — `food`, `amazon` (→ games), `yelp` × `native` / `base` — writing `classified_data_{domain}_{tag}_0.csv` and copying each into the downstream classified-data directory as `Downstream/data/classified/{dataset}_{tag}.csv` (e.g. `food_native.csv`).
+
+### How labeling works
+
+Labeling proceeds in two LLM stages, with no predefined label space:
+
+1. **Cluster generation** — a sampled subset of sessions (every `SAMPLE_STEP`-th session) is shown to the LLM, which proposes `T_CLUSTERS` persona-style category labels (e.g. *"Fine Dining Enthusiast"*, *"Budget Conscious Shopper"*).
+2. **Session classification** — every session is then assigned one or more of those labels (multi-label, processed in batches).
+
+Each session is enriched with **tag-aware context**: the top tags of its items (`native` category tags or `base` TagGPT-generated tags) are appended to the prompt, so the LLM grounds its labels in domain semantics rather than raw item names.
+
+Key parameters live in [`Upstream/PseudoUser/src/config.py`](Upstream/PseudoUser/src/config.py); several can be overridden via environment variables:
+
+| Parameter | Env var | Default | Meaning |
+|---|---|---|---|
+| `T_CLUSTERS` | `T_CLUSTERS` | 20 | number of persona labels to discover |
+| `SAMPLE_STEP` | `SAMPLE_STEP` | 25 | session sampling interval for clustering |
+| `SAMPLE_SIZE` | `SAMPLE_SIZE` | 4900 | session window to classify |
+| `INCLUDE_TAG` | — | `base` / `native` | tag type used for context (set per run) |
+
 ## Data
 
-Download the following files and place them under the `GeTag/` directory:
+Download the following files and place them under the `Downstream/` directory:
 
 | File | Contents | Link |
 |---|---|---|
@@ -20,17 +89,17 @@ Download the following files and place them under the `GeTag/` directory:
 
 > **Note:** The Food dataset is derived from a private data source and is not included in the download above. If you need access for research purposes, please contact the authors.
 
-After downloading, unzip both archives inside the `GeTag/` directory:
+After downloading, unzip both archives inside the `Downstream/` directory:
 
 ```bash
-cd GeTag
+cd Downstream
 unzip data.zip
 unzip tags.zip
 ```
 
 Expected directory structure after download:
 ```
-GeTag/
+Downstream/
 ├── tags/
 │   ├── food/          # native.json, basetag.json, betags.json (contact authors for access)
 │   ├── games/
@@ -47,20 +116,30 @@ GeTag/
 ## Project Structure
 
 ```
-GeTag/
-├── getag/                     # Core GeTag implementation
-│   ├── gen_getag.py           # Tag generation
-│   ├── search_zscore_threshold.py        # BM25 threshold search
-│   ├── search_zscore_threshold_birank.py # BiRank threshold search
-│   └── search_zscore_threshold_unisrec.py# UniSRec threshold search
-├── downstream/
-│   ├── bm25/                  # BM25 retrieval
-│   ├── birank/                # BiRank retrieval
-│   ├── UniSRec/               # Sequential recommendation
-│   └── LLMRank/               # LLM-based ranking
-├── scripts/                   # Preprocessing and visualization scripts
-└── checkpoints/               # Pre-trained model checkpoints
+GeTag-pipeline/
+├── Upstream/                      # Stage 1: session labeling (PseudoUser)
+│   └── PseudoUser/
+│       ├── src/                   # label_phase.py, config.py, prompt.py, utils.py, run_all_label_phase.sh
+│       ├── data/                  # raw session data + item tags per dataset
+│       └── json/                  # id↔name mappings, tag dictionaries
+└── Downstream/                    # Stage 2: GeTag generation + evaluation
+    ├── getag/                     # Core GeTag implementation
+    │   ├── gen_getag.py           # Tag generation
+    │   ├── search_zscore_threshold.py        # BM25 threshold search
+    │   ├── search_zscore_threshold_birank.py # BiRank threshold search
+    │   └── search_zscore_threshold_unisrec.py# UniSRec threshold search
+    ├── downstream/
+    │   ├── bm25/                  # BM25 retrieval
+    │   ├── birank/                # BiRank retrieval
+    │   ├── UniSRec/               # Sequential recommendation
+    │   └── LLMRank/               # LLM-based ranking
+    ├── scripts/                   # Preprocessing and visualization scripts
+    └── checkpoints/               # Pre-trained model checkpoints
 ```
+
+## Stage 2 — Downstream: Tag Generation & Evaluation
+
+> Run all commands in this section from inside `Downstream/` (`cd Downstream`).
 
 ## Step 1: Generate GeTags
 
