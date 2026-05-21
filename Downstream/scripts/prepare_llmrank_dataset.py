@@ -34,6 +34,10 @@ def load_data(base_dir, dataset_name, tag_name):
     with open(os.path.join(base_dir, mapping_file), 'r', encoding='utf-8') as f:
         name_to_id = json.load(f)
 
+    # For games/yelp: smap.json is index → name, but we need name → index for evaluation.csv lookup
+    if dataset_name in ['games', 'yelp']:
+        name_to_id = {v: k for k, v in name_to_id.items()}
+
     # Load title mapping for Amazon (ASIN → readable title)
     asin_to_title = None
     if title_mapping_file:
@@ -52,11 +56,13 @@ def load_data(base_dir, dataset_name, tag_name):
     return name_to_id, id_to_tags, eval_sessions, asin_to_title
 
 
-def create_item_file(name_to_id, id_to_tags, output_path, asin_to_title=None):
+def create_item_file(name_to_id, id_to_tags, output_path, asin_to_title=None, max_tags=None):
     """Create RecBole .item file
 
     Args:
         asin_to_title: Optional mapping from ASIN to readable product title (for Amazon)
+        max_tags: Maximum number of NATIVE tags per item (None = no limit).
+                  ALL preference tags are always included.
     """
     print(f"Creating item file: {output_path}")
 
@@ -78,12 +84,28 @@ def create_item_file(name_to_id, id_to_tags, output_path, asin_to_title=None):
                 item_name = asin_or_name
 
             tags = id_to_tags[item_id]
-            # Join tags with space, limit to top 10 tags
-            tags_str = ' '.join(tags[:10])
+
+            # Separate preference tags from native tags
+            preference_tags = [t for t in tags if '偏好' in t or ' Preference' in t or 'preference' in t.lower()]
+            native_tags = [t for t in tags if t not in preference_tags]
+
+            # Apply max_tags limit ONLY to native tags, keep ALL preference tags
+            if max_tags is not None:
+                limited_native_tags = native_tags[:max_tags]
+            else:
+                limited_native_tags = native_tags
+
+            # Put ALL preference tags first, then limited native tags
+            reordered_tags = preference_tags + limited_native_tags
+            tags_str = ' '.join(reordered_tags)
 
             f.write(f"{item_id}\t{item_name}\t{tags_str}\n")
 
     print(f"Created item file with {len(id_to_tags)} items")
+    if max_tags is not None:
+        print(f"  ✓ Using ALL preference tags + max {max_tags} native tags per item")
+    else:
+        print(f"  ✓ Using all tags per item (no limit)")
     if asin_to_title:
         print(f"  ✓ Using product titles instead of ASINs for better LLM understanding")
 
@@ -184,12 +206,14 @@ def main():
                        choices=['food', 'games', 'yelp'],
                        help='Dataset name')
     parser.add_argument('--tag', type=str, required=True,
-                       choices=['native', 'basetag', 'getag_native', 'getag_basetag'],
+                       choices=['native', 'basetag', 'betag', 'getag_native', 'getag_basetag', 'getag_betag'],
                        help='Tag variant')
     parser.add_argument('--train_ratio', type=float, default=0.8,
                        help='Train/test split ratio (default: 0.8)')
     parser.add_argument('--num_sessions', type=int, default=None,
                        help='Limit number of sessions (for testing, e.g., 100)')
+    parser.add_argument('--max_tags', type=int, default=None,
+                       help='Maximum NATIVE tags per item (default: None = no limit, use all tags). ALL preference tags are always included.')
 
     args = parser.parse_args()
 
@@ -230,7 +254,7 @@ def main():
     # Create item file
     print(f"\n[2/3] Creating item file...")
     item_path = output_dir / f'{dataset_tag_name}.item'
-    create_item_file(name_to_id, id_to_tags, item_path, asin_to_title)
+    create_item_file(name_to_id, id_to_tags, item_path, asin_to_title, max_tags=args.max_tags)
 
     # Create interaction file (RecBole will handle splitting)
     print(f"\n[3/3] Creating interaction file...")

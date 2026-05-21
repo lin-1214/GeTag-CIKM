@@ -70,8 +70,8 @@ class Rank(SequentialRecommender):
                 raw_text = token_text[token]
                 item_text.append(raw_text)
             return item_text
-        elif self.dataset_name.startswith(('food_', 'movie_', 'amazon_', 'yelp_')):
-            # Universal handler for food, movie, amazon, yelp with any tag variant
+        elif self.dataset_name.startswith(('food_', 'movie_', 'amazon_', 'yelp_', 'games_')):
+            # Universal handler for food, movie, amazon, yelp, games with any tag variant
             with open(feat_path, 'r', encoding='utf-8') as file:
                 file.readline()
                 for line in file:
@@ -172,7 +172,7 @@ class Rank(SequentialRecommender):
                 elif self.dataset_name in ['Games', 'Games-6k']:
                     # rec_item_idx_list = self.parsing_output_indices(scores, i, response_list, idxs, candidate_text)
                     rec_item_idx_list = self.parsing_output_text(scores, i, response_list, idxs, candidate_text)
-                elif self.dataset_name.startswith(('food_', 'movie_', 'amazon_', 'yelp_')):
+                elif self.dataset_name.startswith(('food_', 'movie_', 'amazon_', 'yelp_', 'games_')):
                     # Use text parsing for food, movie, amazon, yelp datasets
                     rec_item_idx_list = self.parsing_output_text(scores, i, response_list, idxs, candidate_text)
                 else:
@@ -328,6 +328,20 @@ class Rank(SequentialRecommender):
                         f"Now there are {self.recall_budget} candidate products that I can consider to purchase next:\n{candidate_display}\n" \
                         f"Please rank these {self.recall_budget} products by measuring the possibilities that I would like to purchase next most, according to my purchase history. Please think step by step.\n" \
                         f"Please show me your ranking results with order numbers. Split your output with line break. You MUST rank the given candidate products. You can not generate products that are not in the given candidate list."
+        elif dataset_name.startswith('games_'):
+            # Games dataset (English)
+            if session_pref_counts and len(session_pref_counts) > 0:
+                pref_summary = "\n".join([f"  - {pref}: {count} items" for pref, count in session_pref_counts.most_common()])
+                pref_section = f"Based on your purchase history, this session shows the following gamer preference patterns:\n{pref_summary}\n\n"
+                prompt = f"{pref_section}I've purchased the following games in the past in order:\n{user_his_text}\n\n" \
+                        f"Now there are {self.recall_budget} candidate games that I can consider to purchase next:\n{candidate_display}\n" \
+                        f"Please rank these {self.recall_budget} games by measuring the possibilities that I would like to purchase next most, according to my purchase history. Please think step by step.\n" \
+                        f"Please show me your ranking results with order numbers. Split your output with line break. You MUST rank the given candidate games. You can not generate games that are not in the given candidate list."
+            else:
+                prompt = f"I've purchased the following games in the past in order:\n{user_his_text}\n\n" \
+                        f"Now there are {self.recall_budget} candidate games that I can consider to purchase next:\n{candidate_display}\n" \
+                        f"Please rank these {self.recall_budget} games by measuring the possibilities that I would like to purchase next most, according to my purchase history. Please think step by step.\n" \
+                        f"Please show me your ranking results with order numbers. Split your output with line break. You MUST rank the given candidate games. You can not generate games that are not in the given candidate list."
         elif dataset_name.startswith('yelp_'):
             # Yelp dataset (English) - restaurants/businesses
             # Put preference summary at the FRONT for better framing

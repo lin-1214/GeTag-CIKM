@@ -124,9 +124,7 @@ def process_ablation_file(filepath):
         seq_weights, max_seq_len = extract_config_info(config)
         
         # Both user-based and item-based use 100 negative samples for evaluation
-        # Use VAL for model selection, report TEST results (same as retrieval.py)
-        hr10_val = row.get('hr@10/100/val', None)
-        ndcg10_val = row.get('ndcg@10/100/val', None)
+        # This matches how retrieval.py selects best config (by ndcg@10/100/val)
         hr10_test = row.get('hr@10/100/test', None)
         ndcg10_test = row.get('ndcg@10/100/test', None)
         
@@ -135,10 +133,8 @@ def process_ablation_file(filepath):
             'tag_name': tag_name.strip(),
             'seq_weights': seq_weights,
             'max_seq_len': max_seq_len,
-            'HR@10_val': hr10_val,
-            'NDCG@10_val': ndcg10_val,
-            'HR@10_test': hr10_test,
-            'NDCG@10_test': ndcg10_test
+            'HR@10': hr10_test,
+            'NDCG@10': ndcg10_test
         })
     
     return pd.DataFrame(results)
@@ -176,20 +172,19 @@ def summarize_results():
         df = process_ablation_file(filepath)
         
         # Create summary (best config per threshold)
-        # Use VAL to select best config, then report TEST results
-        summary = df.loc[df.groupby('zscore_threshold')['NDCG@10_val'].idxmax()]
+        summary = df.loc[df.groupby('zscore_threshold')['HR@10'].idxmax()]
         summary = summary.sort_values('zscore_threshold')
         summary['dataset'] = dataset
         summary['base_tag'] = base_tag
         summary['mode'] = mode
         all_summaries.append(summary)
         
-        # Print concise table (showing TEST results, selected by VAL)
+        # Print concise table
         print(f"\n  === {dataset.upper()} / {base_tag} / {mode} ===")
-        print(f"  {'Threshold':<12} {'HR@10':<10} {'NDCG@10':<10} (test, selected by val)")
-        print(f"  {'-'*50}")
+        print(f"  {'Threshold':<12} {'HR@10':<10} {'NDCG@10':<10}")
+        print(f"  {'-'*34}")
         for _, row in summary.iterrows():
-            print(f"  {row['zscore_threshold']:<12} {row['HR@10_test']:.4f}     {row['NDCG@10_test']:.4f}")
+            print(f"  {row['zscore_threshold']:<12} {row['HR@10']:.4f}     {row['NDCG@10']:.4f}")
         print()
     
     # Create combined summary
@@ -217,8 +212,8 @@ def format_for_sheets(csv_path=None):
         return
     
     df = pd.read_csv(csv_path)
-    df['HR@10_test'] = df['HR@10_test'].round(4)
-    df['NDCG@10_test'] = df['NDCG@10_test'].round(4)
+    df['HR@10'] = df['HR@10'].round(4)
+    df['NDCG@10'] = df['NDCG@10'].round(4)
     
     thresholds = [-2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0]
     
@@ -232,42 +227,42 @@ def format_for_sheets(csv_path=None):
     print("\t".join(header))
     
     for dataset in ['food', 'games', 'yelp']:
-        for base_tag in ['basetag', 'native', 'betags']:
+        for base_tag in ['basetag', 'native']:
             for mode in ['itembased', 'userbased']:
                 row = [dataset, base_tag, mode]
                 for t in thresholds:
                     val = df[(df['dataset'] == dataset) & 
                             (df['base_tag'] == base_tag) & 
                             (df['mode'] == mode) & 
-                            (df['zscore_threshold'] == t)]['HR@10_test'].values
+                            (df['zscore_threshold'] == t)]['HR@10'].values
                     row.append(f"{val[0]:.4f}" if len(val) > 0 else "-")
                 print("\t".join(row))
     
     # ========== TABLE 2: NDCG@10 ==========
     print()
     print("=" * 70)
-    print("NDCG@10 TABLE (Copy & Paste to Google Sheets) - Test results, selected by Val")
+    print("NDCG@10 TABLE (Copy & Paste to Google Sheets)")
     print("=" * 70)
     print()
     
     print("\t".join(header))
     
     for dataset in ['food', 'games', 'yelp']:
-        for base_tag in ['basetag', 'native', 'betags']:
+        for base_tag in ['basetag', 'native']:
             for mode in ['itembased', 'userbased']:
                 row = [dataset, base_tag, mode]
                 for t in thresholds:
                     val = df[(df['dataset'] == dataset) & 
                             (df['base_tag'] == base_tag) & 
                             (df['mode'] == mode) & 
-                            (df['zscore_threshold'] == t)]['NDCG@10_test'].values
+                            (df['zscore_threshold'] == t)]['NDCG@10'].values
                     row.append(f"{val[0]:.4f}" if len(val) > 0 else "-")
                 print("\t".join(row))
     
     # ========== TABLE 3: Best per config ==========
     print()
     print("=" * 70)
-    print("BEST THRESHOLD PER CONFIG (Selected by Val NDCG@10, Reporting Test)")
+    print("BEST THRESHOLD PER CONFIG (Copy & Paste to Google Sheets)")
     print("=" * 70)
     print()
     
@@ -275,26 +270,26 @@ def format_for_sheets(csv_path=None):
     print("\t".join(summary_header))
     
     for dataset in ['food', 'games', 'yelp']:
-        for base_tag in ['basetag', 'native', 'betags']:
+        for base_tag in ['basetag', 'native']:
             for mode in ['itembased', 'userbased']:
                 subset = df[(df['dataset'] == dataset) & 
                            (df['base_tag'] == base_tag) & 
                            (df['mode'] == mode)]
                 if len(subset) == 0:
                     continue
-                best_row = subset.loc[subset['NDCG@10_val'].idxmax()]
+                best_row = subset.loc[subset['HR@10'].idxmax()]
                 row = [
                     dataset, base_tag, mode,
                     f"{best_row['zscore_threshold']:.1f}",
-                    f"{best_row['HR@10_test']:.4f}",
-                    f"{best_row['NDCG@10_test']:.4f}"
+                    f"{best_row['HR@10']:.4f}",
+                    f"{best_row['NDCG@10']:.4f}"
                 ]
                 print("\t".join(row))
     
     # ========== TABLE 4: Compact per mode ==========
     print()
     print("=" * 70)
-    print("COMPACT FORMAT (HR@10 Test with Best column, selected by Val)")
+    print("COMPACT FORMAT (HR@10 with Best column)")
     print("=" * 70)
     
     for mode in ['itembased', 'userbased']:
@@ -303,26 +298,23 @@ def format_for_sheets(csv_path=None):
         print("\t".join(header2))
         
         for dataset in ['food', 'games', 'yelp']:
-            for base_tag in ['basetag', 'native', 'betags']:
+            for base_tag in ['basetag', 'native']:
                 row = [dataset, base_tag]
                 values = []
-                val_values = []
                 for t in thresholds:
-                    subset = df[(df['dataset'] == dataset) & 
+                    val = df[(df['dataset'] == dataset) & 
                             (df['base_tag'] == base_tag) & 
                             (df['mode'] == mode) & 
-                            (df['zscore_threshold'] == t)]
-                    if len(subset) > 0:
-                        values.append(subset['HR@10_test'].values[0])
-                        val_values.append(subset['NDCG@10_val'].values[0])
-                        row.append(f"{subset['HR@10_test'].values[0]:.4f}")
+                            (df['zscore_threshold'] == t)]['HR@10'].values
+                    if len(val) > 0:
+                        values.append(val[0])
+                        row.append(f"{val[0]:.4f}")
                     else:
                         values.append(0)
-                        val_values.append(0)
                         row.append("-")
                 
-                if val_values and max(val_values) > 0:
-                    best_idx = val_values.index(max(val_values))
+                if values:
+                    best_idx = values.index(max(values))
                     row.append(f"z={thresholds[best_idx]}")
                 else:
                     row.append("-")

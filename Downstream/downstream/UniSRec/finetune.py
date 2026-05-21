@@ -184,6 +184,10 @@ if __name__ == '__main__':
         '--stopping_step', type=int, default=10,
         help='Number of epochs for early stopping'
     )
+    parser.add_argument(
+        '--result_file', type=str, default=None,
+        help='Optional path to write best_valid_score and best_valid_result as JSON'
+    )
 
     args, unparsed = parser.parse_known_args()
 
@@ -213,3 +217,17 @@ if __name__ == '__main__':
     print(f"Best validation {result['model']}: {result['best_valid_result']}")
     print(f"Test result: {result['test_result']}")
     print("="*80)
+
+    if args.result_file:
+        import json
+        from pathlib import Path
+        out = {
+            'dataset': result['dataset'],
+            'best_valid_score': result['best_valid_score'],
+            'best_valid_result': {k: float(v) for k, v in result['best_valid_result'].items()},
+            'test_result': {k: float(v) for k, v in result['test_result'].items()},
+        }
+        Path(args.result_file).parent.mkdir(parents=True, exist_ok=True)
+        with open(args.result_file, 'w') as f:
+            json.dump(out, f, indent=2)
+        print(f"Result written to: {args.result_file}")

@@ -24,7 +24,7 @@ from pathlib import Path
 parser = argparse.ArgumentParser(description='Generate GETags from classified CSV')
 parser.add_argument('--dataset', type=str, required=True, choices=['food', 'games', 'yelp'],
                     help='Dataset name')
-parser.add_argument('--base_tag', type=str, required=True, choices=['native', 'basetag', 'betags'],
+parser.add_argument('--base_tag', type=str, required=True, choices=['native', 'basetag', 'betags', 'betags_top20'],
                     help='Base tag type to use as input')
 parser.add_argument('--classified_csv', type=str, required=True,
                     help='Path to classified CSV file')
@@ -34,6 +34,8 @@ parser.add_argument('--no_zscore_filter', action='store_true',
                     help='Disable z-score filtering (include all tags regardless of z-score)')
 parser.add_argument('--zscore_threshold', type=float, default=None,
                     help='Custom z-score threshold (e.g., -2, -1, 0, 1, 2). Overrides dataset default.')
+parser.add_argument('--no_composite_tags', action='store_true',
+                    help='Disable composite tag generation.')
 args = parser.parse_args()
 
 # Dataset-specific configurations
@@ -63,7 +65,7 @@ DATASET_CONFIG = {
         'use_smap': True,  # Uses index-to-business_id mapping
         'level_tags': [" Preference"],  # English
         'z_score_thresholds': [0.0],
-        'enable_composite_tags': False,  # Disabled for yelp
+        'enable_composite_tags': True,
         'min_session_support': 20,
         'max_composite_patterns': 10,
         'max_pattern_size': 3,

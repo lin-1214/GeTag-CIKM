@@ -82,28 +82,19 @@ checkpoints/*
 !checkpoints/README.md
 !checkpoints/UniSRec-FHCKM-300.pth
 
-# Large preprocessed datasets (UniSRec datasets with BERT embeddings are very large)
-data/preprocessed/UniSRec/
 
-# Large data files (uncomment if you want to exclude more)
-# Note: Current data/ is ~8MB which is acceptable for GitHub
-# data/raw/**/*.csv
-# data/preprocessed/**/*.json
-# data/preprocessed/**/*.pkl
-# !data/**/.gitkeep
+# Tags and data go to Google Cloud, not GitHub
+tags/
+data/
 
-# Generated tag files (uncomment if you want to exclude)
-# Note: Current tags/ is ~34MB which is acceptable for GitHub
-# tags/**/*.json
-# !tags/**/.gitkeep
-
-# Large tag files (betags are >100MB, too large for GitHub)
-tags/**/betags.json
-tags/**/getag_betags*.json
-
-# GeTag intermediate files (generated during tag generation)
-tags/**/item_group_mapping_*.json
-tags/**/group_tag_frequency_*.json
+# Scripts (batch runners and internal scripts not for public use)
+scripts/
+!scripts/preprocess_food_for_unisrec.py
+!scripts/preprocess_games_for_unisrec.py
+!scripts/preprocess_yelp_for_unisrec.py
+!scripts/prepare_llmrank_dataset.py
+!scripts/prepare_unisrec_dataset.sh
+!scripts/plot_threshold_search.py
 
 # Temporary files
 *.tmp

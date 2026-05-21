@@ -53,6 +53,11 @@ parser.add_argument('--tag_name', type=str, default='getag_native',
                     help='Tag JSON base name (without .json)')
 parser.add_argument('--verbose', action='store_true',
                     help='Enable verbose output to monitor progress (recommended for large datasets)')
+parser.add_argument('--no_cache', action='store_true',
+                    help='Disable BiRank precomputation cache (useful during threshold search)')
+parser.add_argument('--fast_grid', action='store_true',
+                    help='Use a reduced hyperparameter grid for faster threshold search '
+                         '(32 user-based configs instead of 162, 4 item-based instead of 16)')
 args = parser.parse_args()
 
 # Get dataset configuration
@@ -72,8 +77,12 @@ def best_row(df: pd.DataFrame):
 
 def itembased_birank_grid(dataset_config: DatasetConfigT):
     """Grid search for item-based BiRank retrieval"""
-    ALPHA = [0.5, 0.75, 0.85, 0.9]
-    BETA = [0.5, 0.75, 0.85, 0.9]
+    if args.fast_grid:
+        ALPHA = [0.5, 0.9]
+        BETA = [0.5, 0.9]
+    else:
+        ALPHA = [0.5, 0.75, 0.85, 0.9]
+        BETA = [0.5, 0.75, 0.85, 0.9]
 
     total = len(ALPHA) * len(BETA)
     if VERBOSE:
@@ -101,7 +110,7 @@ def itembased_birank_grid(dataset_config: DatasetConfigT):
             ks=KS,
         )
 
-        results = config.eval(cache_dir='downstream/birank/cache', verbose=VERBOSE)
+        results = config.eval(cache_dir=None if args.no_cache else 'downstream/birank/cache', verbose=VERBOSE)
         results['config'] = ExperimentConfig.model_validate(
             config.model_dump()
         )
@@ -119,11 +128,18 @@ def itembased_birank_grid(dataset_config: DatasetConfigT):
 
 def userbased_birank_grid(dataset_config: DatasetConfigT):
     """Grid search for user-based BiRank recommendation"""
-    ALPHA = [0.75, 0.85, 0.9]
-    BETA = [0.75, 0.85, 0.9]
-    MAX_SEQ_LEN = [None, 15, 20]
-    SEQ_WEIGHTS = [None, 'linear', 'log2']
-    QUERY_TYPE = ['sum', 'union']
+    if args.fast_grid:
+        ALPHA = [0.75, 0.9]
+        BETA = [0.75, 0.9]
+        MAX_SEQ_LEN = [None, 20]
+        SEQ_WEIGHTS = [None, 'log2']
+        QUERY_TYPE = ['sum', 'union']
+    else:
+        ALPHA = [0.75, 0.85, 0.9]
+        BETA = [0.75, 0.85, 0.9]
+        MAX_SEQ_LEN = [None, 15, 20]
+        SEQ_WEIGHTS = [None, 'linear', 'log2']
+        QUERY_TYPE = ['sum', 'union']
 
     total = len(ALPHA) * len(BETA) * len(MAX_SEQ_LEN) * len(SEQ_WEIGHTS) * len(QUERY_TYPE)
     if VERBOSE:
@@ -164,7 +180,7 @@ def userbased_birank_grid(dataset_config: DatasetConfigT):
             ks=KS,
         )
 
-        results = config.eval(cache_dir='downstream/birank/cache', verbose=VERBOSE)
+        results = config.eval(cache_dir=None if args.no_cache else 'downstream/birank/cache', verbose=VERBOSE)
         results['config'] = ExperimentConfig.model_validate(
             config.model_dump()
         )

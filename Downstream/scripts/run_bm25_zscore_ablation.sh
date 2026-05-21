@@ -20,7 +20,7 @@ THRESHOLDS=(-2 -1.5 -1 -0.5 0 0.5 1 1.5 2)
 
 # Datasets and base tags
 DATASETS=("food" "games" "yelp")
-BASE_TAGS=("native" "basetag" "betags")
+BASE_TAGS=("native" "basetag")
 
 # Apply filters if specified
 if [ -n "$FILTER_DATASET" ]; then
