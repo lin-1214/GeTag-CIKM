@@ -22,7 +22,7 @@ def _read_json_as_df(path: str):
 def load_df(cache_dir: str = _CACHE_DIR, auto_split: bool = True, variant: VariantT = None):
     """Load full sequences from sequences.json.
 
-    Like i3fresh, we load full sequences (not pre-split).
+    Like food, we load full sequences (not pre-split).
     The leave-one-last-item split will be done at load time by inters_df().
     """
     assert variant in get_args(VariantT)
@@ -77,7 +77,7 @@ def inters_df(
     result_df = df.copy()
     result_df['u'] = result_df.index
 
-    # Perform leave-one-last-item split at load time (like i3fresh)
+    # Perform leave-one-last-item split at load time (like food)
     if split == 'train':
         result_df['loaded_pids'] = result_df['loaded_pids'].map(lambda seq: seq[:-2])
     elif split == 'val':

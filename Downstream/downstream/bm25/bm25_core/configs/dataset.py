@@ -99,8 +99,8 @@ class BaseDatasetConfig(BaseConfig, abc.ABC):
 
 class UnseenLastItemsPredictionDatasetConfig(BaseDatasetConfig):
 
-    name: Literal['i3fresh.last'] = 'i3fresh.last'
-    """name of the dataset. one of ['i3fresh']"""
+    name: Literal['food.last'] = 'food.last'
+    """name of the dataset. one of ['food']"""
 
     n_last_items: int
     """number last items used as the prediction target"""
@@ -113,9 +113,9 @@ class UnseenLastItemsPredictionDatasetConfig(BaseDatasetConfig):
     def _init_dataset(self, global_config, verbose=False):
         datasets = {}
 
-        assert 'i3fresh' in self.name
-        all_pids = data_loaders.i3fresh.AVAILABLE_PRODUCT_IDS
-        dfs = data_loaders.i3fresh.load_df()
+        assert 'food' in self.name
+        all_pids = data_loaders.food.AVAILABLE_PRODUCT_IDS
+        dfs = data_loaders.food.load_df()
         for split, df in dfs.items():
             x, y = utils.preparation_for_session_based_last_items_prediction(
                 utils.pid_seqs_to_iid_seqs(
@@ -134,7 +134,7 @@ class UnseenLastItemsPredictionDatasetConfig(BaseDatasetConfig):
 class RetrievalTaskDatasetConfig(BaseDatasetConfig):
     """Tags of first item as query, the rest items as relevant documents.
     """
-    name: Literal['i3fresh.ir', 'recipe.small.ir', 'movielens.ir']
+    name: Literal['food.ir', 'recipe.small.ir', 'movielens.ir']
 
     min_n_relvants: int
     """minimun number of relvant documents"""
@@ -145,9 +145,9 @@ class RetrievalTaskDatasetConfig(BaseDatasetConfig):
         datasets = {}
 
         assert self.name.endswith('.ir')
-        if 'i3fresh' in self.name:
-            all_pids = data_loaders.i3fresh.AVAILABLE_PRODUCT_IDS
-            dfs = data_loaders.i3fresh.load_df()
+        if 'food' in self.name:
+            all_pids = data_loaders.food.AVAILABLE_PRODUCT_IDS
+            dfs = data_loaders.food.load_df()
         else:
             getter = _recursive_getattr(data_loaders, self.name[:-3], None)
             assert getter is not None
@@ -171,7 +171,7 @@ class UserItemLastItemPredictionDatasetConfig(BaseDatasetConfig):
 
     name: Literal[
         'recipe.mini_leave_one_last_item.last',
-        'i3fresh.leave_one_last_item.last',
+        'food.leave_one_last_item.last',
         'pseudouser.leave_one_last_item.last',
         'movielens.last',
         'movielens.leave_one_last_item.last',
@@ -242,7 +242,7 @@ class UserItemLastItemRetrievalDatasetConfig(
     second last item to predict the last item"""
 
     name: Literal['recipe.mini_leave_one_last_item.lastir',
-                  'i3fresh.leave_one_last_item.lastir',
+                  'food.leave_one_last_item.lastir',
                   'movielens.global_temporal.lastir',
                   'movielens.leave_one_last_item.lastir',
                   'amazon.leave_one_last_item.lastir',

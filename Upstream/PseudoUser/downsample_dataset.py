@@ -97,13 +97,13 @@ if __name__ == '__main__':
         '--dataset',
         type=str,
         required=True,
-        help='Path to dataset directory (e.g., data/unisrec/i3fresh_basetag_zh)'
+        help='Path to dataset directory (e.g., data/unisrec/food_basetag_zh)'
     )
     parser.add_argument(
         '--target_users',
         type=int,
         default=13374,
-        help='Target number of users (default: 13374 to match old i3fresh)'
+        help='Target number of users (default: 13374 to match old food)'
     )
     parser.add_argument(
         '--seed',

@@ -1,1 +1,1 @@
-from . import i3fresh, recipe, movielens, amazon, pseudouser, yelp
+from . import food, recipe, movielens, amazon, pseudouser, yelp

@@ -29,7 +29,7 @@ import time
 # Dataset configuration mapping
 DATASET_CONFIG = {
     'food': {
-        'internal_name': 'i3fresh',
+        'internal_name': 'food',
         'display_name': 'Food',
         'ks': [1, 5, 10, 20]
     },
