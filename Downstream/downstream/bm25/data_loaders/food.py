@@ -1,19 +1,14 @@
 from typing import Literal, Callable, Optional, Union
 from typing_extensions import deprecated
 from itertools import zip_longest
-import requests
 import json
 import os
-from urllib.parse import urlparse
-import hashlib
 from functools import lru_cache
-import zipfile
 import pandas as pd
 import numpy as np
 
 __all__ = [
     'list_all_available_data',
-    'set_password',
     'N_RPODUCTS',
     'AVAILABLE_PRODUCT_IDS',
     'PID_MAPPING',
@@ -29,9 +24,6 @@ __all__ = [
     'product_info',
     'base_tags',
 ]
-
-_DATASET_URL = 'https://www.dropbox.com/scl/fi/ejkje0mv5wfcaanpgtzui/datasets_20240520.zip?rlkey=muu7ycdkbqyaxlcgfl6psomqe&st=qw5a4p94&dl=0'
-_DATASET_URL_HASH = hashlib.md5(_DATASET_URL.encode()).hexdigest()
 
 
 _CACHE_DIR = 'data/preprocessed/food/bm25'
@@ -64,29 +56,6 @@ def _download(url: str, cache_dir: str):
         assert ext == '.pkl'
         return pd.read_pickle(file_path)
 
-
-def _download_datasets(cache_hashed_dir: str):
-    os.makedirs(cache_hashed_dir, exist_ok=True)
-    file_name = os.path.basename(urlparse(_DATASET_URL).path)
-    file_path = os.path.join(cache_hashed_dir, file_name)
-
-    if not os.path.exists(file_path):
-        headers = {'user-agent': 'Wget/1.16 (linux-gnu)'}
-        res = requests.get(_DATASET_URL, headers=headers)
-        assert res.status_code == 200
-        with open(file_path, 'wb') as fout:
-            fout.write(res.content)
-
-    with zipfile.ZipFile(file_path, mode='r') as zipfin:
-        pwd = getattr(_download_datasets, 'pwd', None)
-        if pwd is None:
-            pwd = input(
-                'You have not set the password for the dataset, '
-                'either set the password using final.data.setpassword(<pwd>) '
-                'or prompt the password here: '
-            )
-        zipfin.setpassword(pwd.encode())
-        zipfin.extractall(cache_hashed_dir)
 
 
 @lru_cache(maxsize=2)
@@ -137,10 +106,6 @@ def _create_split(
         'test': merged_df[test_idx],  #.reset_index(drop=True),
     }
 
-
-def set_password(password: str):
-    _download_datasets.pwd = password
-    return
 
 
 def inters_df(
